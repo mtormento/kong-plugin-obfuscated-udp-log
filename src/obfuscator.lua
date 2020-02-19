@@ -1,10 +1,3 @@
-local JSON = ""
-if _G._TEST then
-    JSON = require "../src/json"
-else
-    JSON = require "kong.plugins.obfuscated-udp-log.json" 
-end
-
 local cjson = require "cjson.safe"
 
 local _M = {}
@@ -52,12 +45,14 @@ local function obfuscate_entry(key, value, keys_to_obfuscate, mask)
 end
 
 function _M.obfuscate(json_string, keys_to_obfuscate, mask)
-    local json_object = cjson.decode(json_string)
-    if json_object == nil or keys_to_obfuscate == nil then
+    local json_object, error_msg = cjson.decode(json_string)
+    if json_object == nil then
+        return "[obfuscated-udp-log] error reading json: " .. error_msg
+    elseif keys_to_obfuscate == nil or #keys_to_obfuscate == 0 then
         return json_string
     end
     obfuscate_entry(nil, json_object, set(keys_to_obfuscate), mask)
-    return JSON:encode(json_object)
+    return cjson.encode(json_object)
 end
 
 return _M

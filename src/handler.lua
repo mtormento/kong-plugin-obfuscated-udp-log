@@ -1,7 +1,8 @@
 local BasePlugin = require "kong.plugins.base_plugin"
 local serializer = require "kong.plugins.obfuscated-udp-log.serializer"
 local obfuscator = require "kong.plugins.obfuscated-udp-log.obfuscator"
-local cjson = require "cjson"
+local JSON = require "kong.plugins.obfuscated-udp-log.json" 
+local cjson = require "cjson.safe"
 
 local plugin_name = "obfuscated-udp-log"
 local LOG_TAG = "[" .. plugin_name .. "] "
@@ -54,7 +55,7 @@ function ObfuscatedUdpLogHandler:access(conf)
     ngx.req.read_body()
     local body_data = ngx.req.get_body_data()
     -- ngx.log(ngx.DEBUG, LOG_TAG, "req_body is: ", body_data)
-    ngx.ctx.req_body = (conf.obfuscate_request_body and table.getn(conf.keys_to_obfuscate) > 0) and obfuscator.obfuscate(body_data, conf.keys_to_obfuscate, conf.mask) or body_data
+    ngx.ctx.req_body = (conf.obfuscate_request_body and #conf.keys_to_obfuscate > 0) and obfuscator.obfuscate(body_data, conf.keys_to_obfuscate, conf.mask) or body_data
     ngx.log(ngx.DEBUG, LOG_TAG, "obfuscated req_body is: ", ngx.ctx.req_body)
   end
 end
@@ -70,17 +71,31 @@ function ObfuscatedUdpLogHandler:body_filter(conf)
     if eof then
       ngx.log(ngx.DEBUG, LOG_TAG, "response content-type is: ", content_type)
       -- ngx.log(ngx.DEBUG, LOG_TAG, "resp_body is: ", ngx.ctx.buffered)
-      ngx.ctx.resp_body = (conf.obfuscate_response_body and table.getn(conf.keys_to_obfuscate) > 0) and obfuscator.obfuscate(ngx.ctx.buffered, conf.keys_to_obfuscate, conf.mask) or ngx.ctx.buffered
+      ngx.ctx.resp_body = (conf.obfuscate_response_body and #conf.keys_to_obfuscate > 0) and obfuscator.obfuscate(ngx.ctx.buffered, conf.keys_to_obfuscate, conf.mask) or ngx.ctx.buffered
       ngx.ctx.buffered = nil
       ngx.log(ngx.DEBUG, LOG_TAG, "obfuscated resp_body is: ", ngx.ctx.resp_body)
     end
   end
 end
 
+local function jsonEncodeSafe(data)
+  local objectToSerialize = serializer.serialize(ngx)
+  local status, value = pcall(JSON.encode, JSON, objectToSerialize)
+  if status then
+    return value
+  else
+    ngx.log(ngx.WARN, LOG_TAG, "could not encode to json with good escaping, fallback to safe encoding library: ", value)
+    -- Wonky escaping but should work everytime
+    value, errorMsg = cjson.encode(objectToSerialize)
+    ngx.log(ngx.ERR, LOG_TAG, "could not encode to json even with safe encoding library: ", errorMsg)
+    return value ~= nil and value or ("{\"jsonEncodeError\":\"" ..  errorMsg .. "\"}")
+  end
+end
+
 function ObfuscatedUdpLogHandler:log(conf)
   ObfuscatedUdpLogHandler.super.log(self)  
 
-  local ok, err = timer_at(0, log, conf, cjson.encode(serializer.serialize(ngx)))
+  local ok, err = timer_at(0, log, conf, jsonEncodeSafe(serializer.serialize(ngx)))
   if not ok then
     ngx.log(ngx.ERR, LOG_TAG, "could not create timer: ", err)
   end
