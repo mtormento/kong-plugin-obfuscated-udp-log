@@ -16,7 +16,7 @@ ObfuscatedUdpLogHandler.PRIORITY = 8
 ObfuscatedUdpLogHandler.VERSION = "0.1.0"
 
 local function is_json_body(content_type)
-  return content_type and find(lower(content_type), "application/json", nil, true)
+  return content_type and string.find(string.lower(content_type), "application/json", nil, true)
 end
 
 local function log(premature, conf, str)
