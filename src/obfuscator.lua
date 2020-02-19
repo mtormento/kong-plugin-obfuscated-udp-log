@@ -45,6 +45,15 @@ local function obfuscate_entry(key, value, keys_to_obfuscate, mask)
 end
 
 function _M.obfuscate(json_string, keys_to_obfuscate, mask)
+    local response = _M.obfuscate_return_table(json_string, keys_to_obfuscate, mask)
+    if (type(response) == "string") then
+        return response
+    else
+        return cjson.encode(response)
+    end
+end
+
+function _M.obfuscate_return_table(json_string, keys_to_obfuscate, mask)
     local json_object, error_msg = cjson.decode(json_string)
     if json_object == nil then
         return "[obfuscated-udp-log] error reading json: " .. error_msg
@@ -52,7 +61,7 @@ function _M.obfuscate(json_string, keys_to_obfuscate, mask)
         return json_string
     end
     obfuscate_entry(nil, json_object, set(keys_to_obfuscate), mask)
-    return cjson.encode(json_object)
+    return json_object
 end
 
 return _M
