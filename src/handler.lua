@@ -1,7 +1,6 @@
 local BasePlugin = require "kong.plugins.base_plugin"
 local serializer = require "kong.plugins.obfuscated-udp-log.serializer"
 local obfuscator = require "kong.plugins.obfuscated-udp-log.obfuscator"
-local JSON = require "kong.plugins.obfuscated-udp-log.json" 
 local cjson = require "cjson.safe"
 
 local plugin_name = "obfuscated-udp-log"
@@ -19,31 +18,13 @@ local function is_json_body(content_type)
   return content_type and string.find(string.lower(content_type), "application/json", nil, true)
 end
 
-local function get_obfuscator_fn(conf)
-    local obfuscator_fn = "" 
-    if conf.body_in_json_format then
-      obfuscator_fn = obfuscator.obfuscate_return_table
-    else
-      obfuscator_fn = obfuscator.obfuscate
-    end
-    return obfuscator_fn
-end
-
 local function json_encode_safe(data)
-  local objectToSerialize = serializer.serialize(ngx)
-  local status, value = pcall(JSON.encode, JSON, objectToSerialize)
-  if status then
+  local value, errorMsg = cjson.encode(data)
+  if not errorMsg then
     return value
   else
-    ngx.log(ngx.WARN, LOG_TAG, "could not encode to json with good escaping, fallback to safe encoding library: ", value)
-    -- Wonky escaping but should work everytime
-    local value, errorMsg = cjson.encode(objectToSerialize)
-    if not errorMsg then
-      return value
-    else
-      ngx.log(ngx.ERR, LOG_TAG, "could not encode to json even with safe encoding library: ", errorMsg)
-      return { obfuscatedUdpLogError=errorMsg }
-    end
+    ngx.log(ngx.ERR, LOG_TAG, "could not encode to json: ", errorMsg)
+    return { obfuscatedUdpLogError=errorMsg }
   end
 end
 
@@ -88,9 +69,10 @@ function ObfuscatedUdpLogHandler:access(conf)
     local body_data = ngx.req.get_body_data()
     -- ngx.log(ngx.DEBUG, LOG_TAG, "req_body is: ", body_data)
     if body_data then
-      local obfuscator_fn = get_obfuscator_fn(conf)
-      ngx.ctx.req_body = (conf.obfuscate_request_body and #conf.keys_to_obfuscate > 0) and obfuscator_fn(body_data, conf.keys_to_obfuscate, conf.mask) or (conf.body_in_json_format and cjson.decode(body_data) or body_data)
-      ngx.log(ngx.DEBUG, LOG_TAG, "obfuscated req_body is: ", ngx.ctx.req_body)
+      ngx.ctx.req_body = (conf.obfuscate_request_body and #conf.keys_to_obfuscate > 0) and obfuscator.obfuscate_return_table(body_data, conf.keys_to_obfuscate, conf.mask) or cjson.decode(body_data)
+      if ngx.ctx.req_body then
+        ngx.log(ngx.DEBUG, LOG_TAG, "obfuscated req_body is: ", ngx.ctx.req_body)
+      end
     end
   end
 end
@@ -106,10 +88,9 @@ function ObfuscatedUdpLogHandler:body_filter(conf)
     if eof then
       ngx.log(ngx.DEBUG, LOG_TAG, "response content-type is: ", content_type)
       -- ngx.log(ngx.DEBUG, LOG_TAG, "resp_body is: ", ngx.ctx.buffered)
-      if ngx.ctx.buffered then
-        local obfuscator_fn = get_obfuscator_fn(conf)
-        ngx.ctx.resp_body = (conf.obfuscate_response_body and #conf.keys_to_obfuscate > 0) and obfuscator_fn(ngx.ctx.buffered, conf.keys_to_obfuscate, conf.mask) or (conf.body_in_json_format and cjson.decode(ngx.ctx.buffered) or ngx.ctx.buffered)
-        ngx.ctx.buffered = nil
+      ngx.ctx.resp_body = (conf.obfuscate_response_body and #conf.keys_to_obfuscate > 0) and obfuscator.obfuscate_return_table(ngx.ctx.buffered, conf.keys_to_obfuscate, conf.mask) or cjson.decode(ngx.ctx.buffered)
+      ngx.ctx.buffered = nil
+      if ngx.ctx.resp_body then
         ngx.log(ngx.DEBUG, LOG_TAG, "obfuscated resp_body is: ", ngx.ctx.resp_body)
       end
     end

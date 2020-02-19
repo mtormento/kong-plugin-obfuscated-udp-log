@@ -30,7 +30,6 @@ build = {
     ["kong.plugins.obfuscated-udp-log.serializer"] = "src/serializer.lua",
     ["kong.plugins.obfuscated-udp-log.obfuscator"] = "src/obfuscator.lua",
     ["kong.plugins.obfuscated-udp-log.handler"] = "src/handler.lua",
-    ["kong.plugins.obfuscated-udp-log.schema"] = "src/schema.lua",
-    ["kong.plugins.obfuscated-udp-log.json"] = "src/json.lua"
+    ["kong.plugins.obfuscated-udp-log.schema"] = "src/schema.lua"
   }
 }
