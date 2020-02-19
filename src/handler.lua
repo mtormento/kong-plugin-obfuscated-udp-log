@@ -15,6 +15,10 @@ local ObfuscatedUdpLogHandler = BasePlugin:extend{}
 ObfuscatedUdpLogHandler.PRIORITY = 8
 ObfuscatedUdpLogHandler.VERSION = "0.1.0"
 
+local function is_json_body(content_type)
+  return content_type and find(lower(content_type), "application/json", nil, true)
+end
+
 local function log(premature, conf, str)
   if premature then
     return
@@ -51,7 +55,7 @@ function ObfuscatedUdpLogHandler:access(conf)
 
   local content_type = kong.request.get_header("Content-Type")
   ngx.log(ngx.DEBUG, LOG_TAG, "request content-type is: ", content_type)
-  if content_type == "application/json" then
+  if is_json_body(content_type) then
     ngx.req.read_body()
     local body_data = ngx.req.get_body_data()
     -- ngx.log(ngx.DEBUG, LOG_TAG, "req_body is: ", body_data)
@@ -64,7 +68,7 @@ function ObfuscatedUdpLogHandler:body_filter(conf)
   ObfuscatedUdpLogHandler.super.body_filter(self)  
 
   local content_type = ngx.header['Content-Type']
-  if content_type == "application/json" then
+  if is_json_body(content_type) then
     local chunk = ngx.arg[1]
     local eof = ngx.arg[2]
     ngx.ctx.buffered = (ngx.ctx.buffered or "") .. chunk
