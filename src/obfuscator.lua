@@ -1,4 +1,4 @@
-local cjson = require "cjson.safe"
+local cjson = require "cjson"
 
 local _M = {}
 
@@ -46,19 +46,13 @@ end
 
 function _M.obfuscate(json_string, keys_to_obfuscate, mask)
     local response = _M.obfuscate_return_table(json_string, keys_to_obfuscate, mask)
-    if (type(response) == "string") then
-        return response
-    else
-        return cjson.encode(response)
-    end
+    return cjson.encode(response)
 end
 
 function _M.obfuscate_return_table(json_string, keys_to_obfuscate, mask)
-    local json_object, error_msg = cjson.decode(json_string)
-    if json_object == nil then
-        return "[obfuscated-udp-log] error reading json: " .. error_msg
-    elseif keys_to_obfuscate == nil or #keys_to_obfuscate == 0 then
-        return json_string
+    local json_object = cjson.decode(json_string)
+    if keys_to_obfuscate == nil or #keys_to_obfuscate == 0 then
+        return json_object
     end
     obfuscate_entry(nil, json_object, set(keys_to_obfuscate), mask)
     return json_object

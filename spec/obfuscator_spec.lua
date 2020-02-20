@@ -100,8 +100,8 @@ TestObfuscate = {} --class
         mask = '***'
 
         ktoObj = cjson.decode(keysToObfuscate)
-        responseString = obfuscator.obfuscate(testJson, ktoObj, mask)
-        lu.assertEquals( responseString, '[obfuscated-udp-log] error reading json: Expected value but found unexpected end of string at character 23')
+        status, errorMsg = pcall(obfuscator.obfuscate, testJson, ktoObj, mask)
+        lu.assertEquals( errorMsg, './///src/obfuscator.lua:53: Expected value but found unexpected end of string at character 23')
     end
 -- class TestObfuscate
 

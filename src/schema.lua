@@ -14,6 +14,7 @@ return {
           { obfuscate_response_body = { type = "boolean", required = true, default = true }, },
           { keys_to_obfuscate = { type = "set", elements = { type = "string"} } },
           { mask = { type = "string", required = true, default = "***" } },
+          { original_body_on_error = { type = "boolean", required = true, default = false }, },
     }, }, },
   },
 }
