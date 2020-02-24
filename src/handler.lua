@@ -25,8 +25,11 @@ local function json_encode_safe(data)
   else
     ngx.log(ngx.ERR, LOG_TAG, "could not encode to json: ", value)
     return cjson.encode({
-      obfuscatedUdpLogErrorMsg = value,
-      original_data = data
+      obfuscatedUdpLog = { 
+        errorCode = "ENCODE_ERROR",
+        errorMsg = value,
+        originalData = data
+      }
     })
   end
 end
@@ -43,8 +46,11 @@ local function handle_data(data, obfuscate, keys_to_obfuscate, mask, original_bo
   else
     ngx.log(ngx.ERR, LOG_TAG, "could not decode json: ", value)
     return {
-      obfuscatedUdpLogErrorMsg = value,
-      original_body = original_body_on_error and data or "original_body_on_error is disabled"
+      obfuscatedUdpLog = { 
+        errorCode = "DECODE_ERROR",
+        errorMsg = value,
+        originalBody = original_body_on_error and data or "original_body_on_error is disabled"
+      }
     }
   end
 end
@@ -91,9 +97,13 @@ function ObfuscatedUdpLogHandler:access(conf)
     -- ngx.log(ngx.DEBUG, LOG_TAG, "req_body is: ", body_data)
     if body_data ~= nil then
       ngx.ctx.req_body = handle_data(body_data, conf.obfuscate_request_body, conf.keys_to_obfuscate, conf.mask, conf.original_body_on_error)
-      ngx.log(ngx.DEBUG, LOG_TAG, "final request body is: ", ngx.ctx.req_body)
+--      ngx.log(ngx.DEBUG, LOG_TAG, "final request body is: ", cjson.encode(ngx.ctx.req_body))
     else
-      ngx.ctx.req_body = "no body found"
+      ngx.ctx.req_body = {
+        obfuscatedUdpLog = { 
+          noBody = true
+        }
+      }
     end
   end
 end
@@ -112,9 +122,13 @@ function ObfuscatedUdpLogHandler:body_filter(conf)
       if ngx.ctx.buffered ~= "" then
         ngx.ctx.resp_body = handle_data(ngx.ctx.buffered, conf.obfuscate_response_body, conf.keys_to_obfuscate, conf.mask, conf.original_body_on_error)
         ngx.ctx.buffered = nil
-        ngx.log(ngx.DEBUG, LOG_TAG, "final response body is: ", ngx.ctx.resp_body)
+--        ngx.log(ngx.DEBUG, LOG_TAG, "final response body is: ", cjson.encode(ngx.ctx.resp_body))
       else
-        ngx.ctx.resp_body = "no body found"
+        ngx.ctx.resp_body = {
+          obfuscatedUdpLog = { 
+            noBody = true
+          }
+        }
       end
     end
   end
