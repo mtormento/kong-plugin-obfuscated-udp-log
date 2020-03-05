@@ -12,7 +12,7 @@ local udp = ngx.socket.udp
 local ObfuscatedUdpLogHandler = BasePlugin:extend{}
 
 ObfuscatedUdpLogHandler.PRIORITY = 8
-ObfuscatedUdpLogHandler.VERSION = "0.1.0"
+ObfuscatedUdpLogHandler.VERSION = "0.1.1"
 
 local function is_json_body(content_type)
   return content_type and string.find(string.lower(content_type), "application/json", nil, true)
@@ -105,14 +105,39 @@ function ObfuscatedUdpLogHandler:access(conf)
         }
       }
     end
+  else
+    ngx.ctx.req_body = {
+      obfuscatedUdpLog = { 
+        notJson = true
+      }
+    }
+  end
+end
+
+function ObfuscatedUdpLogHandler:header_filter(conf)
+  ObfuscatedUdpLogHandler.super.header_filter(self)  
+
+  local content_type = kong.response.get_header('Content-Type')
+  if is_json_body(content_type) then
+    -- Placeholder in case body_filter is not invoked because there's no body
+    ngx.ctx.resp_body = {
+      obfuscatedUdpLog = { 
+        noBody = true
+      }
+    }
+  else
+    ngx.ctx.resp_body = {
+      obfuscatedUdpLog = { 
+        notJson = true
+      }
+    }
   end
 end
 
 function ObfuscatedUdpLogHandler:body_filter(conf)
   ObfuscatedUdpLogHandler.super.body_filter(self)  
 
-  local content_type = ngx.header['Content-Type']
-  if is_json_body(content_type) then
+  if not ngx.ctx.resp_body.obfuscatedUdpLog.notJson then
     local chunk = ngx.arg[1]
     local eof = ngx.arg[2]
     ngx.ctx.buffered = (ngx.ctx.buffered or "") .. chunk
@@ -126,9 +151,11 @@ function ObfuscatedUdpLogHandler:body_filter(conf)
       else
         ngx.ctx.resp_body = {
           obfuscatedUdpLog = { 
-            noBody = true
+            errorCode = "BODY_EXPECTED_ERROR",
+            errorMsg = "Body was expected, but not found."
           }
         }
+        ngx.log(ngx.WARN, LOG_TAG, "Response body was expected, but not found.")
       end
     end
   end
