@@ -34,6 +34,25 @@ Restart Kong and you're ready to go.
 $ luarocks install kong-plugin-obfuscated-udp-log
 </pre>
 
+## Usage
+
+### Parameters
+
+| Parameter                              | Required | Default           | Description                                                                                                                                                                                                                                                                                                                                                                              |
+| -------------------------------------- | -------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| name                                   | yes      |                   | The name of the plugin to use, in this case `secure-box-decrypter`.                                                                                                                                                                                                                                                                                                                              |
+| service_id                             | semi     |                   | The id of the Service which this plugin will target.                                                                                                                                                                                                                                                                                                                                     |
+| route_id                               | semi     |                   | The id of the Route which this plugin will target.                                                                                                                                                                                                                                                                                                                                       |
+| enabled                                | no       | `true`            | Whether this plugin will be applied.                                                                                                                                                                                                                                                                                                                                                     |
+| config.host                            | yes      |                   | Logging server host.
+| config.port                            | yes      |                   | Logging server port.
+| config.timeout                         | yes      | 10000             | Socket timeout.
+| config.obfuscate_request_body          | yes      | `true`            | Whether to obfuscate request body.
+| config.obfuscate_response_body         | yes      | `true`            | Whether to obfuscate response body.
+| config.keys_to_obfuscate               | yes      |                   | Set of keys to obfuscate.
+| config.mask                            | yes      | `***`             | Mask to use for obfuscation.
+| config.original_body_on_error          | yes      | `false`           | Whether to log original body on obfuscation error.
+
 ## Author
 Marco Tormento
 
